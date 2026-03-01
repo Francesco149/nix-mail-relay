@@ -221,13 +221,13 @@ chown root:beszel-secrets /etc/secrets/beszel-agent
 chmod 600 /etc/secrets/beszel-agent
 ```
 
-now you can confirm on the beszel ui. for the host/ip you want to point it
-to the tail network ip of the relay, which you don't know yet so just use
-a placeholder and change it later.
+for the host/ip in the beszel UI, you need the tailnet IP of the relay, which you won't
+know until after the tailscale dance below. use a placeholder for now and update it once
+you have the IP.
 
-in my case, my beszel ui is running in a docker container and I decided to just
-have a nginx stream proxy on the mail server forwarding the beszel port to the
-tail net ip for the relay. this is already set up for you with this flake
+in my case, my beszel ui is running in a docker container and I have a nginx stream proxy
+on the mail server that forwards the beszel port to the relay's tailnet IP. this is already
+wired up in the flake.
 
 ## deploy
 
