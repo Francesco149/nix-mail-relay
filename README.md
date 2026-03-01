@@ -374,6 +374,9 @@ like on the fresh install.
 
 ## deploy
 
+**NOTE:** `nix-mail.local` relies on mDNS resolving on your LAN. if that doesn't work,
+substitute the machine's local IP directly.
+
 ```
 deploy .#mail -- --hostname nix-mail.local
 reboot
