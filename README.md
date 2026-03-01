@@ -441,23 +441,34 @@ mail._domainkey IN TXT ( "v=DKIM1; k=rsa; "
 ) ; 
 ```
 
-set the record on the domain accordingly 
+the file uses BIND zone file syntax: multiple quoted strings inside parentheses that get
+concatenated when read. **do not paste this verbatim into cloudflare.** cloudflare wants a
+single plain value with no surrounding quotes.
+
+strip the quotes and join all the string fragments into one value:
+
+```
+v=DKIM1; k=rsa; p=MIIBIjAN...rNF9wPspjt...IDAQAB
+```
+
+in your case that's:
+
+```
+v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB
+```
+
+set the record on the domain:
 
 ```
 Type: TXT
 Name: mail._domainkey
-Content: "v=DKIM1; k=rsa; s=email; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF" "9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
+Content: v=DKIM1; k=rsa; p=MIIBIjAN...(your full key)...IDAQAB
 Proxy status: DNS only
 TTL: 2 hr
 ```
 
-I pieced together the p= strings into a single one, not sure if that's necessary, like this:
-
-```
-p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB
-```
-
-but it probably wasn't necessary since it got split up again
+cloudflare will automatically split the value into 255-byte chunks when it stores the record,
+which is why `host -t txt` shows it split up again. that's expected and correct.
 
 check the record with:
 
