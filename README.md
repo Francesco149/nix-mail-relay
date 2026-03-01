@@ -375,7 +375,7 @@ tailscale up --login-server=https://hs.headpats.uk
 ```sh
 ssh root@sh.headpats.uk
 headscale nodes register --key xxxxxxx_xxxxxxxxxxxxxxxx --user default
-``
+```
 
 ```sh
 ssh root@nix-mail.local
@@ -394,7 +394,7 @@ ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses        
 2  | relay    | relay    | [xxxxx]    | [xxxxx] | default | 100.64.0.2, fd7a:115c:a1e0::2 | false     | 2026-03-01 15:21:35 | 0001-01-01 00:00:00 | online    | no     
 4  | home     | home     | [xxxxx]    | [xxxxx] | default | 100.64.0.4, fd7a:115c:a1e0::4 | false     | 2026-03-01 15:28:15 | N/A                 | online    | no     
 
-``
+```
 
 now you can deploy both machines individually or at the same time without specifying the ip's
 
