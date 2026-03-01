@@ -51,6 +51,7 @@
   # for example, changing smtp-relay won't change the port on postfix.
   # these are purely for labeling at the moment
 
+  ports.ssh = 22;
   ports.smtp-relay = 25;
   ports.http = 80;
   ports.https = 443;

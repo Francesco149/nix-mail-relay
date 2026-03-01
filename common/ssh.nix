@@ -19,7 +19,7 @@
 
   networking.firewall = {
     allowedTCPPorts = [
-      22 # ssh
+      config.nmr.ports.ssh
     ];
   };
 }
