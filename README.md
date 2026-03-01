@@ -1,17 +1,17 @@
-self hosted e-mail server using nixos-mailserver and a cheap vps as a relay.
+Self-hosted e-mail server using nixos-mailserver and a cheap VPS as a relay.
 
-the actual mail server runs on my own hardware. the vps is purely used as a relay and doubles
-as a headscale server to access my home net when i'm away.
+The actual mail server runs on my own hardware. The VPS is purely used as a relay and doubles
+as a headscale server to access my home network when I'm away.
 
-this has not been tested beyond my own deployment so you might need to fiddle with things
+This has not been tested beyond my own deployment so you might need to fiddle with things
 here and there, but it should be a good base for anyone trying to do anything similar.
 
-huge thanks to the [nixos-mailserver](https://gitlab.com/simple-nixos-mailserver/nixos-mailserver)
+Huge thanks to the [nixos-mailserver](https://gitlab.com/simple-nixos-mailserver/nixos-mailserver)
 project for doing the heavy lifting of putting together a reliable and easy to set up mail server solution.
 
-# architecture
+# Architecture
 
-arrows point the way the ports need to be open
+Arrows point the way the ports need to be open.
 
 ```
          home LAN         |          internet
@@ -19,7 +19,7 @@ arrows point the way the ports need to be open
 +----------------------+  |  +----------------------+
 |     home server      |  |  |         vps          |
 |   PTR (can't have)   |  |  | PTR mail.headpats.uk |
-|   IP  (dynamic)      |  |  | IP  11.22.33.44      |
+|   IP  (dynamic)      |  |  | IP  x.x.x.x          |
 |                      | tcp |                      |
 | +------------------+ | 443 | +------------------+ |
 | | tailscale client |-------->| headscale server | |
@@ -40,62 +40,76 @@ arrows point the way the ports need to be open
                           |         | gmail |---------'
                                     +-------+
 
-                          "okay inbound email from 11.22.33.44"
+                          "Okay, inbound email from x.x.x.x."
 
-                          "PTR is mail.headpats.uk"
+                          "PTR is mail.headpats.uk."
 
-                          "mail.headpats.uk resolves back to 11.22.33.44"
+                          "mail.headpats.uk resolves back to x.x.x.x."
 
                           "PTR matches, SPF passes, DKIM valid,
                            looks good to me!"
 ```
 
-# setting up the relay
-## vps
-buy the cheapest vps you can find that meets these requirements:
-- you need to be able to set the PTR record to your domain.
-- you must have port 25 open inbound and outbound.
+# Overview
 
-1 vCPU 1gb ram is all you need. my install sits at 6.24gb disk and 260mb ram.
-it could be smaller since I've messed around a bunch and didn't clean up.
+The steps below follow this order:
 
-I used racknerd for ~13$/year with the new year deals. port 25 was open out of the box.
-for the PTR record, I had to open a support ticket and they responded and changed it within 20 minutes.
+1. Buy and configure a VPS and domain.
+2. Install NixOS on the VPS (relay).
+3. Enter the dev environment and edit `config.nix`.
+4. Deploy to the relay and bring tailscale up on it.
+5. Update `tailnet.relay` in `config.nix` and redeploy the relay.
+6. Install NixOS on the home server (mail).
+7. Deploy to the mail server and bring tailscale up on it.
+8. Update `tailnet.mail` in `config.nix` and redeploy both machines.
+9. Set up the DKIM record and test.
 
-you can either ask support before buying or buy, test it and open a ticket if it's blocked.
+# Setting Up the Relay
+## VPS
+Buy the cheapest VPS you can find that meets these requirements:
+- You need to be able to set the PTR record to your domain.
+- You must have port 25 open inbound and outbound.
 
-you can test outbound port 25 by running this from the vps:
+1 vCPU and 1 GB RAM is all you need. My install sits at 6.24 GB disk and 260 MB RAM.
+It could be smaller since I've messed around a bunch and didn't clean up.
+
+I used RackNerd for ~$13/year with the New Year deals. Port 25 was open out of the box.
+For the PTR record, I had to open a support ticket and they responded and changed it within 20 minutes.
+
+You can either ask support before buying, or buy, test it, and open a ticket if it's blocked.
+
+You can test outbound port 25 by running this from the VPS:
 
 ```sh
 nc -zv gmail-smtp-in.l.google.com 25
 ```
 
-which should succeed.
+Which should succeed.
 
-you could also test inbound 25 by running this on your home machine:
+You could also test inbound 25 by running this on your home machine:
 
 ```sh
 nc -zv x.x.x.x 25
 ```
 
-where x.x.x.x is your vps ip. this should get refused but not time out.
+Where x.x.x.x is your VPS IP. This should get refused but not time out.
 
-realistically if your vps is blocking 25, it's gonna be blocking it outbound.
-plus, your isp could be blocking 25 outbound too which would invalidate the test. 
+Realistically, if your VPS is blocking 25 it's going to be blocking it outbound.
+Plus, your ISP could be blocking 25 outbound too, which would invalidate the test.
 
-when setting up your vps, just select some version of ubuntu, which tends to be a good
-base to convert it to nixos later. if your vps provider happens to support custom iso's
-or nixos, just install nixos directly. most don't.
+When setting up your VPS, just select some version of Ubuntu, which tends to be a good
+base to convert to NixOS later. If your VPS provider happens to support custom ISOs
+or NixOS, just install NixOS directly if it supports it (most don't).
 
-I used ubuntu 24.04 on racknerd.
+I used Ubuntu 24.04 on RackNerd.
 
-## domain
-buy a domain. I used cloudflare and got `headpats.uk` for $5.22/year.
+## Domain
+Buy a domain. I used Cloudflare and got `headpats.uk` for $5.22/year.
 
-for the purposes of this readme, mentally replace `headpats.uk` with your domain.
+For the purposes of this readme, mentally replace `headpats.uk` with your domain.
 
-- log into the cloudflare dashboard, go to Domains -> headpats.uk -> DNS -> Records
-- set these dns records, add if missing. replace x.x.x.x with your vps ip
+- Log into the Cloudflare dashboard, go to Domains → headpats.uk → DNS → Records.
+- Set these DNS records, adding any that are missing. Replace x.x.x.x with your VPS IP.
 
 | Type | Name          | Content                        | Proxy status | TTL  | Priority |
 | ---- | ------------- | ------------------------------ | ------------ | ---- | -------- |
@@ -107,21 +121,18 @@ for the purposes of this readme, mentally replace `headpats.uk` with your domain
 | TXT  | _dmarc        | v=DMARC1; p=none               | DNS only     | 2 hr | -        |
 | TXT  | headpats.uk   | v=spf1 a:mail.headpats.uk -all | DNS only     | 2 hr | -        |
 
-if your vps has an ipv6, you can set a AAAA record, but this is optional so probably
-wait until you have everything working.
+If your VPS has an IPv6 address, you can set a AAAA record, but this is optional, so probably wait until you have everything working.
 
-**for the DKIM record, we will set it up once the mail server is up.**
+**For the DKIM record, we will set it up once the mail server is up.**
 
-set your PTR record on your VPS to point to `mail.headpats.uk`
+Set your PTR record on your VPS to point to `mail.headpats.uk`.
 
-double check with [nixos-mailserver guide](https://nixos-mailserver.readthedocs.io/en/nixos-25.11/setup-guide.html) .
+Double-check with the [nixos-mailserver guide](https://nixos-mailserver.readthedocs.io/en/nixos-25.11/setup-guide.html).
+It walks you through checking all the boxes with the records and verifying them.
 
-it walks you through checking all the boxes with the records and checking them.
+Some of these records can take hours to propagate. **Remember to check them before you send mail.**
 
-some of these records can take hours to propagate, **just remember to
-check them before you send mail later.**
-
-here's my records:
+Here are my records for reference:
 
 ```
 # host -t A mail.headpats.uk
@@ -138,11 +149,11 @@ headpats.uk descriptive text "v=spf1 a:mail.headpats.uk -all"
 _dmarc.headpats.uk descriptive text "v=DMARC1; p=none"
 ```
 
-## installing nixos
-for the base os, i selected ubuntu 24.04 which tends to work well with the nixos-infect script.
-you might have to do some reinstalls to test different distros and find one that works.
+## Installing NixOS
+For the base OS, I selected Ubuntu 24.04 which tends to work well with the nixos-infect script.
+You might have to do some reinstalls to test different distros and find one that works.
 
-now ssh into the vps. login with the root password you're given
+SSH into the VPS and log in with the root password you're given:
 
 ```sh
 ssh root@x.x.x.x
@@ -150,12 +161,12 @@ ssh-keygen
 exit
 ```
 
-- **NOTE:** don't forget to add public ssh keys to `~/.ssh/authorized_keys` and/or `/root/.ssh/authorized_keys`
-- **NOTE:** don't forget to check that you can ssh without a password before closing the ssh session.
-- **NOTE:** if you forget, you will have to redeploy or use recovery mode, mount the rootfs and add the keys.
-  ask me how I know
+- **NOTE:** Don't forget to add your public SSH keys to `~/.ssh/authorized_keys` and/or `/root/.ssh/authorized_keys`.
+- **NOTE:** Don't forget to check that you can SSH in without a password before closing the session.
+- **NOTE:** If you forget, you will have to redeploy or use recovery mode, mount the rootfs, and add the keys.
+  Ask me how I know.
 
-## convert it to nixos:
+## Convert to NixOS
 
 ```sh
 curl https://raw.githubusercontent.com/elitak/nixos-infect/36f48d8feb89ca508261d7390355144fc0048932/nixos-infect | NIX_CHANNEL=nixos-25.11 bash -x
@@ -163,47 +174,47 @@ curl https://raw.githubusercontent.com/elitak/nixos-infect/36f48d8feb89ca508261d
 reboot
 ```
 
-**FIXME:** using an old version of the script for now because of [a regression](https://github.com/elitak/nixos-infect/issues/255#issuecomment-3963186336) .
+**FIXME:** Using an old pinned version of the script for now because of [a regression](https://github.com/elitak/nixos-infect/issues/255#issuecomment-3963186336).
 
-check that you can still ssh into the server
+Check that you can still SSH into the server.
 
-## entering the dev environment
-from your home machine, [install nix](https://nix.dev/manual/nix/2.28/installation/) or just run nixos
+## Entering the Dev Environment
+From your home machine, [install nix](https://nix.dev/manual/nix/2.28/installation/) or just run NixOS:
 
 ```
 nix-shell -p git --run git clone https://github.com/Francesco149/nix-mail-relay
 cd nix-mail-relay
-./env.sh 
+./env.sh
 ```
 
-this should drop you into the `headpats-dev` shell.
+This should drop you into the `headpats-dev` shell. See the [Dev Environment](#dev-environment) section
+at the bottom for an overview of the tools and workflows available.
 
-## configuration
-edit `config.nix` with your favorite editor. the shell comes with nvim preconfigured for nix.
+## Configuration
+Edit `config.nix` with your favorite editor. The shell comes with nvim preconfigured for nix.
 
-remove my ssh keys and add your own.
+Remove my SSH keys and add your own.
 
-check all the other .nix files in case something looks off, you don't want to blindly run my code do you.
+Check all the other .nix files in case something looks off. You don't want to blindly run my code, do you.
 
-copy over the hardware configuration.
-you could run `nixos-generate-config` on the server again for good measure.
+Copy over the hardware configuration (you could run `nixos-generate-config` on the server again for good measure):
 
 ```sh
 scp root@x.x.x.x:/etc/nixos/hardware-configuration.nix hosts/relay/
 ```
 
-edit `hosts/relay/configuration.nix` to match what your `/etc/nixos/configuration.nix` looks
+Edit `hosts/relay/configuration.nix` to match what your `/etc/nixos/configuration.nix` looks
 like on the fresh install.
 
 I need to look into making this into a flake template so you don't have to overwrite my
 hardware config and you can make your own flake repo based on it.
 
-## beszel credentials
-if you don't use beszel for monitoring, just set `monitoring = false` in `config.nix`
+## Beszel Credentials
+If you don't use Beszel for monitoring, just set `monitoring = false` in `config.nix`
 and skip this section.
 
-otherwise, click add system in beszel, stay on that screen to copy key and token
-and put it in the env file like so:
+Otherwise, click "Add System" in the Beszel UI, stay on that screen to copy the key and token,
+and put them in the env file like so:
 
 ```sh
 ssh root@x.x.x.x
@@ -221,15 +232,15 @@ chown root:beszel-secrets /etc/secrets/beszel-agent
 chmod 600 /etc/secrets/beszel-agent
 ```
 
-for the host/ip in the beszel UI, you need the tailnet IP of the relay, which you won't
-know until after the tailscale dance below. use a placeholder for now and update it once
+For the host/IP in the Beszel UI, you need the tailnet IP of the relay, which you won't
+know until after the tailscale dance below. Use a placeholder for now and update it once
 you have the IP.
 
-in my case, my beszel ui is running in a docker container and I have a nginx stream proxy
-on the mail server that forwards the beszel port to the relay's tailnet IP. this is already
-wired up in the flake.
+In my setup, Beszel runs in a Docker container and I have an nginx stream proxy on the mail
+server that forwards the Beszel port to the relay's tailnet IP. This is already wired up in
+the flake.
 
-## deploy
+## Deploy
 
 ```sh
 deploy .#relay -- --hostname x.x.x.x
@@ -237,9 +248,9 @@ ssh root@x.x.x.x
 reboot
 ```
 
-## tailscale connectivity
-### on the relay
-let's bring tailscale up and get the relay side of things connected.
+## Tailscale Connectivity
+### On the Relay
+Let's bring tailscale up and get the relay side connected.
 
 ```sh
 ssh root@x.x.x.x
@@ -247,42 +258,42 @@ headscale users create default
 tailscale up --login-server https://hs.headpats.uk
 ```
 
-this will give you a url, open it, copy the command it shows you.
+This will give you a URL. Open it and copy the command it shows you.
 
-open another shell and run the command but change the example `--user` part to `--user default`.
+Open another shell and run the command, but change the example `--user` part to `--user default`:
 
 ```sh
 ssh root@x.x.x.x
 headscale nodes register --key xxxxxxx_xxxxxxxxxxxxxxxx --user default
 ```
 
-the tailscale up shell should say success
+The tailscale up shell should say success.
 
-now get the tailnet IP:
+Now get the tailnet IP:
 
 ```sh
 tailscale ip
 ```
 
-update `tailnet.relay` in `config.nix` with that IP, then **redeploy the relay** so that
+Update `tailnet.relay` in `config.nix` with that IP, then **redeploy the relay** so that
 postfix and nginx pick up the correct address before the mail server tries to use it:
 
 ```sh
 deploy .#relay
 ```
 
-## on your computer
-you should now be able to do the same tailscale dance from your home machine.
+### On Your Computer
+You should now be able to do the same tailscale dance from your home machine.
 
-first, install and enable tailscale and its daemon
+First, install and enable tailscale and its daemon (example for Arch; adapt to your distro):
 
 ```sh
-sudo pacman -S tailscale # or whatever package manager you use
+sudo pacman -S tailscale
 sudo systemctl enable tailscaled
 sudo systemctl start tailscaled
 ```
 
-then, do the usual tailscale up dance
+Then do the usual tailscale up dance:
 
 ```
 [user@home:~]# sudo tailscale up --login-server https://hs.headpats.uk
@@ -304,9 +315,9 @@ fd7a:115c:a1e0::4
 Last login: Sat Feb 28 17:08:13 2026 from 100.64.0.4
 
 [root@relay:~]#
-# we're in, through tailscale this time
+# We're in, through tailscale this time.
 
-# we can take a look at all the nodes
+# We can take a look at all the nodes.
 [root@relay:~]# headscale nodes list
 ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses                  | Ephemeral | Last seen           | Expiration          | Connected | Expired
 2  | relay    | relay    | [xxxxx]    | [xxxxx] | default | 100.64.0.2, fd7a:115c:a1e0::2 | false     | 2026-02-28 03:05:02 | N/A                 | online    | no     
@@ -314,18 +325,18 @@ ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses        
 
 ```
 
-# mail server
-## install nixos and set up ssh
-install nixos on the target machine. I like to use the graphical installer for convenience.
+# Mail Server
+## Install NixOS and Set Up SSH
+Install NixOS on the target machine. I like to use the graphical installer for convenience.
 
-on the target machine, login as root:
+On the target machine, log in as root:
 
 ```sh
 ssh-keygen
 nano /etc/nixos/configuration.nix
 ```
 
-enable openssh and add your ssh key by adding in `/etc/nixos/configuration.nix`:
+Enable openssh and add your SSH key by adding to `/etc/nixos/configuration.nix`:
 
 ```nix
   users.users.root.openssh.authorizedKeys.keys = [
@@ -341,15 +352,15 @@ enable openssh and add your ssh key by adding in `/etc/nixos/configuration.nix`:
   };
 ```
 
-apply changes
+Apply changes:
 
 ```sh
 nixos-rebuild switch
 ```
 
-now you should be able to ssh into the machine.
+Now you should be able to SSH into the machine.
 
-## prepare secrets
+## Prepare Secrets
 ```
 ssh root@nix-mail.local
 
@@ -361,28 +372,27 @@ nix-shell -p mkpasswd --run 'mkpasswd -sm bcrypt' > /var/lib/secrets/loli-hashed
 chmod 600 /var/lib/secrets/loli-hashed-password
 ```
 
-## configuration
-copy over the hardware configuration.
-you could run `nixos-generate-config` on the server again for good measure.
+## Configuration
+Copy over the hardware configuration (you could run `nixos-generate-config` on the server again for good measure):
 
 ```sh
 scp root@nix-mail.local:/etc/nixos/hardware-configuration.nix hosts/mail/
 ```
 
-edit `hosts/mail/configuration.nix` to match what your `/etc/nixos/configuration.nix` looks
+Edit `hosts/mail/configuration.nix` to match what your `/etc/nixos/configuration.nix` looks
 like on the fresh install.
 
-## deploy
+## Deploy
 
-**NOTE:** `nix-mail.local` relies on mDNS resolving on your LAN. if that doesn't work,
+**NOTE:** `nix-mail.local` relies on mDNS resolving on your LAN. If that doesn't work,
 substitute the machine's local IP directly.
 
-```
+```sh
 deploy .#mail -- --hostname nix-mail.local
 reboot
 ```
 
-## tailscale dance
+## Tailscale Dance
 
 ```sh
 ssh root@nix-mail.local
@@ -399,9 +409,9 @@ ssh root@nix-mail.local
 tailscale ip
 ```
 
-update `tailnet.mail` in `config.nix` with the ip you got.
+Update `tailnet.mail` in `config.nix` with the IP you got.
 
-double check that everything is happy
+Double-check that everything looks happy:
 
 ```sh
 # ssh root@hs.headpats.uk
@@ -413,7 +423,7 @@ ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses        
 
 ```
 
-now redeploy both machines so they pick up the final tailnet IPs. the relay needs
+Now redeploy both machines so they pick up the final tailnet IPs. The relay needs
 `tailnet.mail` for its nginx stream proxy to the beszel agent, and the mail server needs
 `tailnet.relay` for postfix:
 
@@ -421,7 +431,7 @@ now redeploy both machines so they pick up the final tailnet IPs. the relay need
 deploy
 ```
 
-now you can deploy both machines individually or at the same time without specifying the ips
+Going forward, you can deploy both machines individually or together without specifying IPs:
 
 ```sh
 deploy
@@ -429,7 +439,7 @@ deploy .#mail
 deploy .#relay
 ```
 
-# set up the DKIM signature
+# Set Up the DKIM Signature
 ```sh
 # ssh root@nix-mail
 Last login: Sun Mar  1 15:25:22 2026 from 10.0.10.173
@@ -438,26 +448,26 @@ Last login: Sun Mar  1 15:25:22 2026 from 10.0.10.173
 mail._domainkey IN TXT ( "v=DKIM1; k=rsa; "
 	"p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv6"
 	"6529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
-) ; 
+) ;
 ```
 
-the file uses BIND zone file syntax: multiple quoted strings inside parentheses that get
-concatenated when read. **do not paste this verbatim into cloudflare.** cloudflare wants a
+The file uses BIND zone file syntax: multiple quoted strings inside parentheses that get
+concatenated when read. **Do not paste this verbatim into Cloudflare.** Cloudflare wants a
 single plain value with no surrounding quotes.
 
-strip the quotes and join all the string fragments into one value:
+Strip the quotes and join all the string fragments into one value:
 
 ```
 v=DKIM1; k=rsa; p=MIIBIjAN...rNF9wPspjt...IDAQAB
 ```
 
-in your case that's:
+In your case that's:
 
 ```
 v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB
 ```
 
-set the record on the domain:
+Set the record on the domain:
 
 ```
 Type: TXT
@@ -467,30 +477,30 @@ Proxy status: DNS only
 TTL: 2 hr
 ```
 
-cloudflare will automatically split the value into 255-byte chunks when it stores the record,
-which is why `host -t txt` shows it split up again. that's expected and correct.
+Cloudflare will automatically split the value into 255-byte chunks when it stores the record,
+which is why `host -t txt` shows it split up again. That's expected and correct.
 
-check the record with:
+Check the record with:
 
 ```sh
 # host -t txt mail._domainkey.headpats.uk
 mail._domainkey.headpats.uk descriptive text "v=DKIM1; k=rsa; s=email; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF" "9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
 ```
 
-# test the spamminess of your emails
-go to [mail-tester](https://www.mail-tester.com/) and send an email to it. this will quickly point out
+# Test the Spamminess of Your Emails
+Go to [mail-tester](https://www.mail-tester.com/) and send an email to it. This will quickly point out
 if you missed anything.
 
 [mailgenius](https://mailgenius.com) is another equivalent tool.
 
-[mxtoolbox](https://mxtoolbox.com/) also helps finding issues, though not all its warnings need to be fixed.
+[mxtoolbox](https://mxtoolbox.com/) also helps find issues, though not all its warnings need to be fixed.
 
-for example for the DMARC stuff ideally you want to wait until mail has circulated for a couple weeks.
+For the DMARC stuff, ideally you want to wait until mail has been circulating for a couple of weeks.
 
-for the BIMI record, it's entirely optional and cosmetic. I might set it up once I get the DMARC tightened up.
+For the BIMI record, it's entirely optional and cosmetic. I might set it up once I get the DMARC tightened up.
 
-# dev environment
-some basic workflows that are included in the dev shell.
+# Dev Environment
+Some basic workflows included in the dev shell:
 
 ```sh
 # Ctrl+r - fuzzy search command history
@@ -500,7 +510,7 @@ some basic workflows that are included in the dev shell.
 # edit code
 nvim hosts/mail/configuration.nix
 
-# CTRL+Z to drop back into shell, fg to resume nvim
+# Ctrl+Z to drop back into shell, fg to resume nvim
 
 # check for common nix antipatterns
 statix check .
@@ -515,15 +525,15 @@ statix fix .
 deadnix --edit .
 ```
 
-in nvim:
+In nvim:
 * `gd` - go to definition of an option or package
 * `K` - hover docs for the option under cursor
 * `<leader>ca` - code actions, can auto-fix some issues
 * `<leader>e` - show explanation of linter when the line shows W or E
 
-leader is `\` by default
+Leader is `\` by default.
 
-## build locally without deploying
+## Build Locally Without Deploying
 ```sh
 # check your config builds without errors
 nom build .#nixosConfigurations.mail.config.system.build.toplevel
@@ -531,13 +541,12 @@ nom build .#nixosConfigurations.mail.config.system.build.toplevel
 # nom gives you a nice progress display instead of raw nix output
 ```
 
-## seeing what will change before deploying
+## Seeing What Will Change Before Deploying
 ```sh
 diff-system mail
 ```
 
-
-or manually
+Or manually:
 
 ```sh
 # build the new config
