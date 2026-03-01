@@ -404,6 +404,43 @@ deploy .#mail
 deploy .#relay
 ```
 
+# set up the DKIM signature
+```sh
+# ssh root@nix-mail
+Last login: Sun Mar  1 15:25:22 2026 from 10.0.10.173
+
+[root@nix-mail:~]# cat /var/dkim/headpats.uk.mail.txt
+mail._domainkey IN TXT ( "v=DKIM1; k=rsa; "
+	"p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv6"
+	"6529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
+) ; 
+```
+
+set the record on the domain accordingly 
+
+```
+Type: TXT
+Name: mail._domainkey
+Content: "v=DKIM1; k=rsa; s=email; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF" "9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
+Proxy status: DNS only
+TTL: 2 hr
+```
+
+I pieced together the p= strings into a single one, not sure if that's necessary, like this:
+
+```
+p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB
+```
+
+but it probably wasn't necessary since it got split up again
+
+check the record with:
+
+```sh
+# host -t txt mail._domainkey.headpats.uk
+mail._domainkey.headpats.uk descriptive text "v=DKIM1; k=rsa; s=email; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyVtusbiNSKChlIDsFHodQPnGZ03XegGrOuihI25C+fAPhArVuuM3xXE7pcxBjdWHTCOoWGYbKN9OndxGu4VmRPjUYZgU3UWGfS8spyoG3vVPle/0Mcldz60YBBTE3vjBrRKBSvGNyF+57QvBbSKZWtsLgeeu52DBhzvTgj3TZThgW8VCMRSL+rNF" "9wPspjt+6m3LG7g/knlgi8Kv66529EQhsEUAlkBiS2YGXnkLSyQ/hGbe4pqeOP2iyCRxvS6Yc02pOTUI6ndn5XoExumq0Q5g9pnzdd0D+6EVzJxK57ZqjLYaw5yMLjGhDVRoshmJkT2gVac01LENmGmLYad19wIDAQAB"
+```
+
 # test the spamminess of your emails
 go to [mail-tester](https://www.mail-tester.com/) and send an email to it. this will quickly point out
 if you missed anything.
