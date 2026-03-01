@@ -376,7 +376,7 @@ tailscale up --login-server=https://hs.headpats.uk
 ```
 
 ```sh
-ssh root@sh.headpats.uk
+ssh root@hs.headpats.uk
 headscale nodes register --key xxxxxxx_xxxxxxxxxxxxxxxx --user default
 ```
 
@@ -390,7 +390,7 @@ update `tailnet.mail` in `config.nix` with the ip you got.
 double check that everything is happy
 
 ```sh
-# ssh root@sh.headpats.uk
+# ssh root@hs.headpats.uk
 # headscale nodes list
 ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses                  | Ephemeral | Last seen           | Expiration          | Connected | Expired
 1  | nix-mail | nix-mail | [xxxxx]    | [xxxxx] | default | 100.64.0.1, fd7a:115c:a1e0::1 | false     | 2026-03-01 15:34:20 | N/A                 | online    | no     
