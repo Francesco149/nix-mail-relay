@@ -258,7 +258,18 @@ headscale nodes register --key xxxxxxx_xxxxxxxxxxxxxxxx --user default
 
 the tailscale up shell should say success
 
-change `tailnet.relay` in `config.nix` to what `tailscale ip` gives you.
+now get the tailnet IP:
+
+```sh
+tailscale ip
+```
+
+update `tailnet.relay` in `config.nix` with that IP, then **redeploy the relay** so that
+postfix and nginx pick up the correct address before the mail server tries to use it:
+
+```sh
+deploy .#relay
+```
 
 ## on your computer
 you should now be able to do the same tailscale dance from your home machine.
@@ -399,7 +410,15 @@ ID | Hostname | Name     | MachineKey | NodeKey | User    | IP addresses        
 
 ```
 
-now you can deploy both machines individually or at the same time without specifying the ip's
+now redeploy both machines so they pick up the final tailnet IPs. the relay needs
+`tailnet.mail` for its nginx stream proxy to the beszel agent, and the mail server needs
+`tailnet.relay` for postfix:
+
+```sh
+deploy
+```
+
+now you can deploy both machines individually or at the same time without specifying the ips
 
 ```sh
 deploy
