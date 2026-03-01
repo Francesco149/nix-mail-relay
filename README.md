@@ -6,8 +6,8 @@ as a headscale server to access my home net when i'm away.
 this has not been tested beyond my own deployment so you might need to fiddle with things
 here and there, but it should be a good base for anyone trying to do anything similar.
 
-huge thanks to the [nixos-mailserver](https://gitlab.com/simple-nixos-mailserver/nixos-mailserver) for
-doing the heavy lifting of putting together a raliable and easy to set up mail server solution.
+huge thanks to the [nixos-mailserver](https://gitlab.com/simple-nixos-mailserver/nixos-mailserver)
+project for doing the heavy lifting of putting together a raliable and easy to set up mail server solution.
 
 # architecture
 
