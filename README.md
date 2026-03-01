@@ -7,7 +7,7 @@ this has not been tested beyond my own deployment so you might need to fiddle wi
 here and there, but it should be a good base for anyone trying to do anything similar.
 
 huge thanks to the [nixos-mailserver](https://gitlab.com/simple-nixos-mailserver/nixos-mailserver)
-project for doing the heavy lifting of putting together a raliable and easy to set up mail server solution.
+project for doing the heavy lifting of putting together a reliable and easy to set up mail server solution.
 
 # architecture
 
@@ -150,7 +150,7 @@ ssh-keygen
 exit
 ```
 
-- **NOTE:** dont' forget to add public ssh keys to `~/.ssh/authorized_keys` and/or `/root/.ssh/authorized_keys`
+- **NOTE:** don't forget to add public ssh keys to `~/.ssh/authorized_keys` and/or `/root/.ssh/authorized_keys`
 - **NOTE:** don't forget to check that you can ssh without a password before closing the ssh session.
 - **NOTE:** if you forget, you will have to redeploy or use recovery mode, mount the rootfs and add the keys.
   ask me how I know
